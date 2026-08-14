@@ -1,0 +1,53 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# ---- Local runtime / env ----
+.env
+.env.local
+*.db
+*.sqlite3
+nada.db
+backend/nada.db
+
+# ---- User uploads & storage (keep structure via .gitkeep) ----
+storage/uploads/*
+storage/images/*
+storage/skills/*
+storage/exports/*
+!storage/.gitkeep
+
+# ---- Logs ----
+logs/
+*.log
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Editors / IDE ----
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ---- Tooling ----
+.superpowers/
+
+# ---- Internal dev documents ----
+docs/
+プロンプト.txt
+実装仕様書.md
+
+# ---- Frontend / build artifacts (if a bundler is added later) ----
+node_modules/
+dist/
+web_dist/

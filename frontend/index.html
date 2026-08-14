@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NADA AI Agent Platform</title>
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/chat.css" />
+</head>
+<body>
+  <aside id="sidebar" class="sidebar hidden">
+    <div class="sidebar-brand">NADA</div>
+    <nav class="sidebar-nav">
+      <a href="#agents" data-link="agents">エージェント一覧</a>
+      <a href="#squads" data-link="squads">スクワッド一覧</a>
+      <a href="#skills-list" data-link="skills-list">Skill一覧</a>
+      <a href="#mcps-list" data-link="mcps-list">MCP一覧</a>
+      <a href="#tools-list" data-link="tools-list">Tool一覧</a>
+      <a href="#dashboard" data-link="dashboard">ダッシュボード</a>
+    </nav>
+    <button id="settings-btn" class="nav-button sidebar-settings">設定</button>
+    <button id="logout-btn" class="nav-button sidebar-logout">ログアウト</button>
+  </aside>
+
+  <main id="app">
+    <section id="login-view" class="view">
+      <div class="card">
+        <h1>NADA AI Agent Platform</h1>
+        <div class="tabs">
+          <button class="tab active" data-tab="login">ログイン</button>
+          <button class="tab" data-tab="register">新規登録</button>
+        </div>
+
+        <form id="login-form" class="form">
+          <label>ユーザー名<input name="username" required /></label>
+          <label>パスワード<input name="password" type="password" required /></label>
+          <button type="submit">ログイン</button>
+        </form>
+
+        <form id="register-form" class="form hidden">
+          <label>ユーザー名<input name="username" required /></label>
+          <label>メールアドレス<input name="email" type="email" required /></label>
+          <label>パスワード<input name="password" type="password" required /></label>
+          <button type="submit">登録</button>
+        </form>
+
+        <p id="login-error" class="error hidden"></p>
+      </div>
+    </section>
+
+    <section id="agents-view" class="view hidden">
+      <div class="page-header">
+        <h2>エージェント一覧</h2>
+        <input type="search" id="agents-search" class="page-search" placeholder="検索..." />
+        <a class="button" href="#builder">新規作成</a>
+      </div>
+      <div id="agents-list" class="list"></div>
+      <p id="agents-empty" class="empty hidden">エージェントがありません。</p>
+    </section>
+
+    <section id="chat-view" class="view hidden">
+      <div class="chat-layout">
+        <aside class="session-sidebar">
+          <button id="new-session-btn" class="button ghost">新しいセッション</button>
+          <div id="sessions-list" class="list compact"></div>
+        </aside>
+        <div class="chat-main">
+          <div class="chat-header">
+            <a class="back-link" href="javascript:void(0);" id="chat-back-link">&larr; 戻る</a>
+            <span id="chat-agent-title">エージェント</span>
+            <button id="open-agent-settings" class="button secondary" style="margin-left:auto;">設定</button>
+            <button id="delete-agent-btn" class="button secondary" style="margin-left:8px;">削除</button>
+          </div>
+          <div id="chat-messages" class="messages"></div>
+          <div class="typing-indicator hidden" id="typing-indicator">生成中...</div>
+          <form id="chat-form" class="chat-input">
+            <div id="attachment-preview" class="attachment-preview hidden"></div>
+            <div class="chat-input-row">
+              <button type="button" id="attach-file-btn" class="button secondary attach-btn" title="ファイルを添付">📎</button>
+              <input type="file" id="chat-attachment-input" class="hidden" multiple />
+              <textarea id="chat-text" rows="2" placeholder="メッセージを入力...（Enter で送信 / Shift+Enter で改行）"></textarea>
+              <button type="submit">送信</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section id="squad-chat-view" class="view hidden">
+      <div class="chat-layout">
+        <aside class="session-sidebar">
+          <button id="new-squad-session-btn" class="button ghost">新しいセッション</button>
+          <div id="squad-sessions-list" class="list compact"></div>
+        </aside>
+        <div class="chat-main">
+          <div class="chat-header">
+            <a class="back-link" href="javascript:void(0);" id="squad-chat-back-link">&larr; 戻る</a>
+            <span id="squad-chat-title">スクワッド</span>
+            <button id="open-squad-settings" class="button secondary" style="margin-left:auto;">設定</button>
+            <button id="delete-squad-btn" class="button secondary" style="margin-left:8px;">削除</button>
+          </div>
+          <div id="squad-chat-messages" class="messages"></div>
+          <div class="typing-indicator hidden" id="squad-typing-indicator">生成中...</div>
+          <form id="squad-chat-form" class="chat-input">
+            <div id="squad-attachment-preview" class="attachment-preview hidden"></div>
+            <div class="chat-input-row">
+              <button type="button" id="squad-attach-file-btn" class="button secondary attach-btn" title="ファイルを添付">📎</button>
+              <input type="file" id="squad-chat-attachment-input" class="hidden" multiple />
+              <textarea id="squad-chat-text" rows="2" placeholder="メッセージを入力...（Enter で送信 / Shift+Enter で改行）"></textarea>
+              <button type="submit">送信</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section id="builder-view" class="view hidden">
+      <div class="card">
+        <h2>エージェント作成</h2>
+        <form id="agent-form" class="form">
+          <label>
+            タイトル
+            <input name="title" required />
+          </label>
+
+          <label>
+            概要
+            <textarea name="description" rows="3" required></textarea>
+          </label>
+
+          <label>
+            モデルプロバイダー
+            <select name="model_provider" required>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="google">Google</option>
+              <option value="ollama">Ollama</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="azure_openai">AzureOpenAI</option>
+              <option value="azure_ai">Azure AI Inference</option>
+            </select>
+          </label>
+
+          <label>
+            モデル
+            <select name="model_id" required>
+              <option value="gpt-4o">gpt-4o</option>
+              <option value="gpt-4o-mini">gpt-4o-mini</option>
+              <option value="claude-3-5-sonnet">claude-3-5-sonnet</option>
+            </select>
+          </label>
+
+          <label>
+            公開範囲
+            <select name="visibility" required>
+              <option value="private">プライベート</option>
+              <option value="public">公開</option>
+            </select>
+          </label>
+
+          <label>
+            ADグループ
+            <input name="ad_group" />
+          </label>
+
+          <label>
+            アイコン
+            <select name="icon">
+              <option value="">-- 選択しない --</option>
+              <option value="🤖">🤖</option>
+              <option value="🧠">🧠</option>
+              <option value="🔧">🔧</option>
+              <option value="👥">👥</option>
+              <option value="🔌">🔌</option>
+              <option value="💬">💬</option>
+            </select>
+          </label>
+
+          <label>
+            ワークスペース設定 JSON
+            <textarea name="workspace" rows="3" placeholder='{"target_directory":"./output"}'></textarea>
+          </label>
+
+          <label>
+            Skills
+            <div>
+              <button type="button" id="open-skills-modal-btn" class="button secondary">Skillsを選択</button>
+            </div>
+          </label>
+
+          <label>
+            MCP
+            <div>
+              <button type="button" id="open-mcps-modal-btn" class="button secondary">MCPを選択</button>
+            </div>
+          </label>
+
+          <label>
+            Tools
+            <div>
+              <button type="button" id="open-builder-tools-btn" class="button secondary">Toolsを選択</button>
+            </div>
+          </label>
+
+          <label>
+            システムプロンプト
+            <textarea name="system_prompt" rows="8" required></textarea>
+          </label>
+
+          <button type="submit">作成</button>
+        </form>
+        <p id="builder-error" class="error hidden"></p>
+      </div>
+    </section>
+
+    <section id="squads-view" class="view hidden">
+      <div class="page-header">
+        <h2>スクワッド一覧</h2>
+        <input type="search" id="squads-search" class="page-search" placeholder="検索..." />
+        <button id="open-create-squad-btn" class="button">新規作成</button>
+      </div>
+      <div id="squads-list" class="list"></div>
+      <p id="squads-empty" class="empty hidden">スクワッドがありません。</p>
+    </section>
+
+    <section id="skills-list-view" class="view hidden">
+      <div class="page-header">
+        <h2>Skill一覧</h2>
+        <input type="search" id="skills-search" class="page-search" placeholder="検索..." />
+        <a class="button" href="#skills-create">新規作成</a>
+      </div>
+      <div id="skills-list" class="list"></div>
+      <p id="skills-empty" class="empty hidden">Skillがありません。</p>
+    </section>
+
+    <section id="skills-create-view" class="view hidden">
+      <div class="page-header">
+        <h2>Skill新規作成</h2>
+      </div>
+      <div class="card">
+        <form id="skill-create-form" class="form">
+          <label>名前<input name="name" required /></label>
+          <label>説明<textarea name="description" rows="3" required></textarea></label>
+          <label>内容<textarea name="content" rows="6" required></textarea></label>
+          <label>公開範囲
+            <select name="visibility" required>
+              <option value="private">プライベート</option>
+              <option value="public">公開</option>
+            </select>
+          </label>
+          <button type="submit">作成</button>
+        </form>
+        <p id="skill-create-error" class="error hidden"></p>
+      </div>
+    </section>
+
+    <section id="skills-detail-view" class="view hidden">
+      <div class="page-header">
+        <h2>Skill詳細</h2>
+        <div>
+          <button type="button" id="edit-skill-btn" class="button secondary">編集</button>
+          <button type="button" id="delete-skill-btn" class="button secondary">削除</button>
+          <a class="button secondary" href="#skills-list">一覧へ戻る</a>
+        </div>
+      </div>
+      <div class="card">
+        <form id="skill-edit-form" class="form hidden">
+          <label>名前<input name="name" required /></label>
+          <label>説明<textarea name="description" rows="3" required></textarea></label>
+          <label>内容<textarea name="content" rows="6" required></textarea></label>
+          <label>公開範囲
+            <select name="visibility" required>
+              <option value="private">プライベート</option>
+              <option value="public">公開</option>
+            </select>
+          </label>
+          <button type="submit">保存</button>
+          <button type="button" id="cancel-skill-edit" class="button secondary">キャンセル</button>
+          <p id="skill-error" class="error hidden"></p>
+        </form>
+        <div id="skill-detail-content"></div>
+      </div>
+    </section>
+
+    <section id="mcps-list-view" class="view hidden">
+      <div class="page-header">
+        <h2>MCP一覧</h2>
+        <input type="search" id="mcps-search" class="page-search" placeholder="検索..." />
+        <a class="button" href="#mcps-create">新規作成</a>
+      </div>
+      <div id="mcps-list" class="list"></div>
+      <p id="mcps-empty" class="empty hidden">MCPがありません。</p>
+    </section>
+
+    <section id="mcps-create-view" class="view hidden">
+      <div class="page-header">
+        <h2>MCP新規作成</h2>
+      </div>
+      <div class="card">
+        <form id="mcp-create-form" class="form">
+          <label>名前<input name="name" required /></label>
+          <label>説明<textarea name="description" rows="3" required></textarea></label>
+          <label>設定 JSON<textarea name="config" rows="8" placeholder='{"command": ""}'></textarea></label>
+          <button type="submit">作成</button>
+        </form>
+        <p id="mcp-create-error" class="error hidden"></p>
+      </div>
+    </section>
+
+    <section id="mcps-detail-view" class="view hidden">
+      <div class="page-header">
+        <h2>MCP詳細</h2>
+        <div>
+          <button type="button" id="edit-mcp-btn" class="button secondary">編集</button>
+          <button type="button" id="delete-mcp-btn" class="button secondary">削除</button>
+          <a class="button secondary" href="#mcps-list">一覧へ戻る</a>
+        </div>
+      </div>
+      <div class="card">
+        <form id="mcp-edit-form" class="form hidden">
+          <label>名前<input name="name" required /></label>
+          <label>説明<textarea name="description" rows="3" required></textarea></label>
+          <label>設定 JSON<textarea name="config" rows="8"></textarea></label>
+          <button type="submit">保存</button>
+          <button type="button" id="cancel-mcp-edit" class="button secondary">キャンセル</button>
+          <p id="mcp-error" class="error hidden"></p>
+        </form>
+        <div id="mcp-detail-content"></div>
+      </div>
+    </section>
+
+    <section id="dashboard-view" class="view hidden">
+      <div class="dashboard-cards">
+        <div class="metric-card">
+          <div class="metric-card-label">コスト (USD)</div>
+          <div class="metric-card-value" id="metric-cost">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-label">トークン</div>
+          <div class="metric-card-value" id="metric-tokens">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-label">作業時間</div>
+          <div class="metric-card-value" id="metric-duration">00:00:00</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-label">実行回数</div>
+          <div class="metric-card-value" id="metric-count">0</div>
+        </div>
+      </div>
+
+      <div class="card dashboard-chart-card">
+        <div class="dashboard-card-header">
+          <h3>日毎の使用量</h3>
+          <div class="chart-tabs">
+            <button type="button" id="chart-mode-tokens" class="chart-tab active">トークン</button>
+            <button type="button" id="chart-mode-cost" class="chart-tab">コスト</button>
+          </div>
+        </div>
+        <canvas id="usage-chart" width="800" height="280"></canvas>
+      </div>
+
+      <div class="card dashboard-table-card">
+        <h3>モデル別 使用量</h3>
+        <table class="dash-table" id="models-usage-table">
+          <thead>
+            <tr><th>モデル</th><th>入力トークン</th><th>出力トークン</th><th>合計</th><th>コスト (USD)</th><th>回数</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card dashboard-table-card">
+        <h3>モデル価格マスター (USD / 1M tokens)</h3>
+        <table class="dash-table" id="model-prices-table">
+          <thead>
+            <tr><th>プロバイダー</th><th>モデル</th><th>入力</th><th>出力</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tools-list-view" class="view hidden">
+      <div class="page-header">
+        <h2>Tool一覧</h2>
+        <input type="search" id="tools-search" class="page-search" placeholder="検索..." />
+      </div>
+      <div id="tools-list" class="list"></div>
+    </section>
+
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-overlay" data-modal-close></div>
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3>設定</h3>
+          <button class="modal-close" data-modal-close>✕</button>
+        </div>
+        <div class="modal-body">
+          <form id="settings-form" class="form">
+            <label>
+              外観
+              <select name="theme">
+                <option value="dark-emerald">Dark Emerald</option>
+                <option value="light">Light</option>
+                <option value="light-pink">Light Pink</option>
+                <option value="light-orange">Light Orange</option>
+                <option value="dark">Dark</option>
+                <option value="slate">Slate</option>
+                <option value="mono">Mono</option>
+              </select>
+            </label>
+            <label>
+              アイコン
+              <select name="icon">
+                <option value="">-- 選択しない --</option>
+                <option value="🤖">🤖</option>
+                <option value="🧠">🧠</option>
+                <option value="🔧">🔧</option>
+                <option value="👥">👥</option>
+                <option value="🔌">🔌</option>
+                <option value="💬">💬</option>
+              </select>
+            </label>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="settings-save" class="button">保存</button>
+          <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Agent settings modal -->
+  <div id="agent-settings-modal" class="modal hidden">
+    <div class="modal-overlay" data-modal-close></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>エージェント設定</h3>
+        <button class="modal-close" data-modal-close>✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="agent-settings-form" class="form">
+          <label>
+            タイトル
+            <input name="title" required />
+          </label>
+
+          <label>
+            概要
+            <textarea name="description" rows="3" required></textarea>
+          </label>
+
+          <label>
+            モデルプロバイダー
+            <select name="model_provider" required>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="google">Google</option>
+              <option value="ollama">Ollama</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="azure_openai">AzureOpenAI</option>
+              <option value="azure_ai">Azure AI Inference</option>
+            </select>
+          </label>
+
+          <label>
+            モデル
+            <input name="model_id" required />
+          </label>
+
+          <label>
+            公開範囲
+            <select name="visibility" required>
+              <option value="private">プライベート</option>
+              <option value="public">公開</option>
+            </select>
+          </label>
+
+          <label>
+            アイコン
+            <select name="icon">
+              <option value="">-- 選択しない --</option>
+              <option value="🤖">🤖</option>
+              <option value="🧠">🧠</option>
+              <option value="🔧">🔧</option>
+              <option value="👥">👥</option>
+              <option value="🔌">🔌</option>
+              <option value="💬">💬</option>
+            </select>
+          </label>
+
+          <label>
+            ワークスペース設定 JSON
+            <textarea name="workspace" rows="3" placeholder='{"target_directory":"./output"}'></textarea>
+          </label>
+
+          <label>
+            Skills
+            <div>
+              <button type="button" id="open-agent-settings-skills-btn" class="button secondary">Skillsを選択</button>
+            </div>
+          </label>
+
+          <label>
+            MCP
+            <div>
+              <button type="button" id="open-agent-settings-mcps-btn" class="button secondary">MCPを選択</button>
+            </div>
+          </label>
+
+          <label>
+            Tools
+            <div>
+              <button type="button" id="open-agent-settings-tools-btn" class="button secondary">Toolsを選択</button>
+            </div>
+          </label>
+
+          <label>
+            システムプロンプト
+            <textarea name="system_prompt" rows="8" required></textarea>
+          </label>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="agent-settings-save" class="button">保存</button>
+        <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agent settings Tools modal -->
+  <div id="agent-settings-tools-modal" class="modal hidden">
+    <div class="modal-overlay" data-modal-close></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Tools を選択</h3>
+        <input type="search" id="agent-settings-tools-search" placeholder="検索..." />
+        <button class="modal-close" data-modal-close>✕</button>
+      </div>
+      <div class="modal-body" id="agent-settings-tools-list"></div>
+      <div class="modal-footer">
+        <button type="button" id="agent-settings-tools-save" class="button">保存</button>
+        <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agent settings Skills modal -->
+  <div id="agent-settings-skills-modal" class="modal hidden">
+    <div class="modal-overlay" data-modal-close></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Skills を選択</h3>
+        <input type="search" id="agent-settings-skills-search" placeholder="検索..." />
+        <button class="modal-close" data-modal-close>✕</button>
+      </div>
+      <div class="modal-body" id="agent-settings-skills-list"></div>
+      <div class="modal-footer">
+        <button type="button" id="agent-settings-skills-save" class="button">保存</button>
+        <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agent settings MCP modal -->
+  <div id="agent-settings-mcps-modal" class="modal hidden">
+    <div class="modal-overlay" data-modal-close></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>MCP を選択</h3>
+        <input type="search" id="agent-settings-mcps-search" placeholder="検索..." />
+        <button class="modal-close" data-modal-close>✕</button>
+      </div>
+      <div class="modal-body" id="agent-settings-mcps-list"></div>
+      <div class="modal-footer">
+        <button type="button" id="agent-settings-mcps-save" class="button">保存</button>
+        <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Squad create modal -->
+  <div id="squad-create-modal" class="modal hidden">
+    <div class="modal-overlay" data-modal-close></div>
+    <div class="modal-box squad-create-modal">
+      <div class="modal-header">
+        <div>
+          <h3>スクワッドを作成</h3>
+          <p class="modal-subtitle">リーダーエージェントと任意の追加メンバーで協働スクワッドを作成します。</p>
+        </div>
+        <button class="modal-close" data-modal-close>✕</button>
+      </div>
+      <form id="squad-create-form" class="squad-create-form">
+        <label class="squad-field">
+          <span class="squad-label">名前</span>
+          <span class="squad-icon" aria-hidden="true">👥</span>
+          <input name="name" placeholder="例: フロントエンドチーム" required />
+        </label>
+
+        <label class="squad-field">
+          <span class="squad-label">説明</span>
+          <textarea name="description" rows="3" placeholder="このスクワッドが担当する内容を説明してください..." maxlength="255" required></textarea>
+          <span class="squad-char-count" id="squad-description-count">0 / 255</span>
+        </label>
+
+        <div class="squad-field">
+          <span class="squad-label">リーダーエージェント</span>
+          <p class="squad-help">リーダーはこのスクワッドに割り当てられたすべてのタスクを受け取り、チームを調整します。</p>
+          <div class="select-field">
+            <span class="select-icon" aria-hidden="true">🧑‍💼</span>
+            <select id="squad-leader-select" name="leader_agent_id">
+              <option value="">リーダーエージェントを選択</option>
+            </select>
+            <span class="select-chevron" aria-hidden="true">▾</span>
+          </div>
+        </div>
+
+        <div class="squad-field">
+          <span class="squad-label">追加メンバー （任意）</span>
+          <p class="squad-help">リーダーがサブタスクを委任できるメンバーです。後から追加できます。</p>
+          <button type="button" id="open-team-modal-btn" class="button secondary">メンバーを選択</button>
+          <div id="squad-team-list" class="squad-team-list hidden"></div>
+        </div>
+
+        <div class="squad-form-footer">
+          <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+          <button type="submit" class="button">スクワッドを作成</button>
+        </div>
+        <p id="squad-create-error" class="error hidden"></p>
+      </form>
+
+      <!-- Team member selection modal inside squad create modal -->
+      <div id="team-select-modal" class="modal hidden">
+        <div class="modal-overlay" data-modal-close></div>
+        <div class="modal-box">
+          <div class="modal-header">
+            <h3>メンバーを選択</h3>
+            <input type="search" id="team-modal-search" placeholder="検索..." />
+            <button class="modal-close" data-modal-close>✕</button>
+          </div>
+          <div class="modal-body" id="team-modal-list"></div>
+          <div class="modal-footer">
+            <button type="button" id="team-modal-save" class="button">保存</button>
+            <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- Squad settings modal -->
+    <div id="squad-settings-modal" class="modal hidden">
+      <div class="modal-overlay" data-modal-close></div>
+      <div class="modal-box squad-create-modal">
+        <div class="modal-header">
+          <div>
+            <h3>スクワード設定</h3>
+            <p class="modal-subtitle">スクワッドの基本情報とメンバーを編集できます。</p>
+          </div>
+          <button class="modal-close" data-modal-close>✕</button>
+        </div>
+        <form id="squad-settings-form" class="squad-create-form">
+          <label class="squad-field">
+            <span class="squad-label">名前</span>
+            <span class="squad-icon" aria-hidden="true">👥</span>
+            <input name="name" placeholder="例: フロントエンドチーム" required />
+          </label>
+
+          <label class="squad-field">
+            <span class="squad-label">説明</span>
+            <textarea name="description" rows="3" placeholder="このスクワッドが担当する内容を説明してください..." maxlength="255" required></textarea>
+            <span class="squad-char-count" id="squad-settings-description-count">0 / 255</span>
+          </label>
+
+          <div class="squad-field">
+            <span class="squad-label">リーダーエージェント</span>
+            <p class="squad-help">リーダーはこのスクワッドに割り当てられたすべてのタスクを受け取り、チームを調整します。</p>
+            <div class="select-field">
+              <span class="select-icon" aria-hidden="true">🧑‍💼</span>
+              <select id="squad-settings-leader-select" name="leader_agent_id">
+                <option value="">リーダーエージェントを選択</option>
+              </select>
+              <span class="select-chevron" aria-hidden="true">▾</span>
+            </div>
+          </div>
+
+          <div class="squad-field">
+            <span class="squad-label">追加メンバー （任意）</span>
+            <p class="squad-help">リーダーがサブタスクを委任できるメンバーです。後から追加できます。</p>
+            <button type="button" id="open-squad-settings-team-modal-btn" class="button secondary">メンバーを選択</button>
+            <div id="squad-settings-team-list" class="squad-team-list hidden"></div>
+          </div>
+
+          <div class="squad-form-footer">
+            <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+            <button type="button" id="squad-settings-save" class="button">保存</button>
+          </div>
+          <p id="squad-settings-error" class="error hidden"></p>
+        </form>
+
+        <!-- Team member selection modal inside squad settings modal -->
+        <div id="squad-settings-team-select-modal" class="modal hidden">
+          <div class="modal-overlay" data-modal-close></div>
+          <div class="modal-box">
+            <div class="modal-header">
+              <h3>メンバーを選択</h3>
+              <input type="search" id="squad-settings-team-modal-search" placeholder="検索..." />
+              <button class="modal-close" data-modal-close>✕</button>
+            </div>
+            <div class="modal-body" id="squad-settings-team-modal-list"></div>
+            <div class="modal-footer">
+              <button type="button" id="squad-settings-team-modal-save" class="button">保存</button>
+              <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <div id="skills-modal" class="modal hidden">
+    <div class="modal-overlay" data-modal-close></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Skills を選択</h3>
+        <input type="search" id="skills-modal-search" placeholder="検索..." />
+        <button class="modal-close" data-modal-close>✕</button>
+      </div>
+      <div class="modal-body" id="skills-modal-list">
+        <!-- populated dynamically: checkbox inputs name="skill_ids" value="..." -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="skills-modal-save" class="button">保存</button>
+        <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MCP modal -->
+  <div id="mcps-modal" class="modal hidden">
+    <div class="modal-overlay" data-modal-close></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>MCP を選択</h3>
+        <input type="search" id="mcps-modal-search" placeholder="検索..." />
+        <button class="modal-close" data-modal-close>✕</button>
+      </div>
+      <div class="modal-body" id="mcps-modal-list">
+        <!-- populated dynamically: radio inputs name="mcp_server_id" value="..." -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="mcps-modal-save" class="button">保存</button>
+        <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Builder Tools modal (agent create) -->
+  <div id="builder-tools-modal" class="modal hidden">
+    <div class="modal-overlay" data-modal-close></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Tools を選択</h3>
+        <input type="search" id="builder-tools-modal-search" placeholder="検索..." />
+        <button class="modal-close" data-modal-close>✕</button>
+      </div>
+      <div class="modal-body" id="builder-tools-modal-list">
+        <!-- populated dynamically via buildToolModalList: checkboxes value=key -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="builder-tools-modal-save" class="button">保存</button>
+        <button type="button" class="button secondary" data-modal-close>キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/agents.js"></script>
+  <script src="js/skills.js"></script>
+  <script src="js/mcps.js"></script>
+  <script src="js/squads.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/tools.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
