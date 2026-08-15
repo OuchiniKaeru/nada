@@ -4,7 +4,7 @@ from agno.models.anthropic import Claude
 from agno.models.google import Gemini
 from agno.models.ollama import Ollama
 from agno.models.openrouter import OpenRouter
-from agno.models.azure import AzureOpenAI, AzureAIFoundry
+from agno.models.azure import AzureOpenAI, AzureAIFoundry, AzureFoundryClaude
 from agno.team import Team, TeamMode
 from agno.tools import Function
 from agno.tools.mcp import MCPTools
@@ -78,12 +78,34 @@ async def close_agno_postgres_db():
         _async_engine = None
 
 
+# Anthropic のプロンプトキャッシュ設定。
+# cache_system_prompt=True でシステムプロンプトをキャッシュ対象にし、
+# extended_cache_time=True + betas で TTL を 5分(デフォルト)から 1時間に延長する。
+# AzureAIFoundry 経由の Claude モデル(AzureFoundryClaude)も
+# agno.models.anthropic.Claude のサブクラスで同じフィールドを継承しているため、
+# 同じキーワード引数がそのまま使える。
+_ANTHROPIC_EXTENDED_CACHE_BETA = "extended-cache-ttl-2025-04-11"
+
+
+def _anthropic_cache_kwargs() -> dict:
+    # 呼び出しのたびに新しい dict/list を返す(インスタンス間で共有しない)。
+    return {
+        "cache_system_prompt": True,
+        "extended_cache_time": True,
+        "betas": [_ANTHROPIC_EXTENDED_CACHE_BETA],
+    }
+
+
+def _is_claude_model_id(model_id: str) -> bool:
+    return (model_id or "").strip().lower().startswith("claude")
+
+
 def _load_model(provider: str, model_id: str):
     provider = (provider or "").strip().lower()
     if provider == "openai":
         return OpenAIChat(id=model_id)
     if provider == "anthropic":
-        return Claude(id=model_id)
+        return Claude(id=model_id, **_anthropic_cache_kwargs())
     if provider == "google":
         import os
         return Gemini(id=model_id, api_key=os.getenv("GOOGLE_API_KEY"))
@@ -95,6 +117,11 @@ def _load_model(provider: str, model_id: str):
     if provider == "azure_openai":
         return AzureOpenAI(id=model_id)
     if provider == "azure_ai":
+        if _is_claude_model_id(model_id):
+            # Azure AI Foundry 上の Claude は汎用の AzureAIFoundry(azure-ai-inference)
+            # クライアントではなく、Anthropic 互換クライアントを使う専用クラス。
+            # cache_system_prompt / extended_cache_time / betas をそのまま利用できる。
+            return AzureFoundryClaude(id=model_id, **_anthropic_cache_kwargs())
         return AzureAIFoundry(id=model_id)
     raise ValueError(f"Unsupported model provider: {provider!r}")
 
@@ -301,7 +328,7 @@ class AgentFactory:
             "session_id": session_id,
             "user_id": user_id,
             "add_history_to_context": True,
-            "num_history_runs":3,
+            "num_history_runs":20,
             "metadata": {
                 "skill_ids": getattr(config, "skill_ids", []),
                 "mcp_server_id": getattr(config, "mcp_server_id", None),
