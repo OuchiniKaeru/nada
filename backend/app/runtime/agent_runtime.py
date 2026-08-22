@@ -17,7 +17,7 @@ from app.models.mcp import MCPServer
 from app.models.squad import Squad
 from app.models.squad_member import SquadMember
 from app.models.attachment import Attachment
-from app.services.agent_factory import AgentFactory, get_agno_postgres_db
+from app.services.agent_factory import AgentFactory, get_agno_db
 from app.services.attachment_service import list_attachments_by_ids
 from agno.media import File as AgnoFile
 
@@ -228,14 +228,59 @@ class AgentRuntime:
             if mcp_server:
                 mcp_servers.append(mcp_server)
 
+        # Hermes トグルで有効化されたリソース (system_prompt / rule / model 等) を解決する
+        hermes_prompts: list[str] = []
+        hermes_model: tuple[str, str] | None = None  # (provider, model_id)
+        try:
+            from app.services.resource_service import get_enabled_resources
+
+            grouped = await get_enabled_resources(self.db, "agent", self.agent_id)
+            for r in grouped.get("system_prompt", []):
+                try:
+                    from app.services.resource_service import load_resource_config
+                    cfg_data = await load_resource_config(r)
+                    if isinstance(cfg_data, dict) and cfg_data.get("prompt"):
+                        hermes_prompts.append(str(cfg_data["prompt"]))
+                except Exception:
+                    pass
+            for r in grouped.get("rule", []):
+                try:
+                    from app.services.resource_service import load_resource_config
+                    rule_data = await load_resource_config(r)
+                    if isinstance(rule_data, dict) and rule_data.get("rule"):
+                        hermes_prompts.append(f"[Rule: {r.name}] {rule_data['rule']}")
+                except Exception:
+                    pass
+            # 有効化されたモデル (最初の1件を採用)
+            for r in grouped.get("model", [])[:1]:
+                try:
+                    from app.services.resource_service import load_resource_config
+                    model_data = await load_resource_config(r)
+                    if isinstance(model_data, dict) and model_data.get("provider") and model_data.get("model_id"):
+                        hermes_model = (str(model_data["provider"]), str(model_data["model_id"]))
+                except Exception:
+                    pass
+        except Exception:
+            hermes_prompts = []
+            hermes_model = None
+
+        system_prompt = agent.system_prompt or ""
+        if hermes_prompts:
+            system_prompt = "\n\n".join([system_prompt] + hermes_prompts)
+
         class _Cfg:
             pass
 
         cfg = _Cfg()
         cfg.title = agent.title
-        cfg.system_prompt = agent.system_prompt
-        cfg.model_provider = agent.model_provider
-        cfg.model_id = agent.model_id
+        cfg.system_prompt = system_prompt
+        # Hermes モデルが有効ならエージェントのモデル設定を上書き
+        if hermes_model:
+            cfg.model_provider = hermes_model[0]
+            cfg.model_id = hermes_model[1]
+        else:
+            cfg.model_provider = agent.model_provider
+            cfg.model_id = agent.model_id
         cfg.skill_ids = agent.skill_ids
         cfg.mcp_server_id = agent.mcp_server_id
         cfg.skills = skills

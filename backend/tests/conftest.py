@@ -60,7 +60,7 @@ async def app(db_session):
         yield db_session
 
     application = FastAPI()
-    application.include_router(auth_router)
+    application.include_router(auth_router, prefix="/api")
 
     application.dependency_overrides = {}
     application.dependency_overrides[original_get_db] = _get_db

@@ -39,7 +39,7 @@ async def app(db_session):
     from app.api.deps import get_db as deps_get_db
 
     application = FastAPI()
-    application.include_router(auth_router)
+    application.include_router(auth_router, prefix="/api")
     application.include_router(agents_router, prefix="/api", tags=["agents"])
 
     application.dependency_overrides = {}

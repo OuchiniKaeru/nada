@@ -132,7 +132,7 @@ async def test_runtime_loads_selected_skills_and_mcp(db_session, monkeypatch):
         owner_id=user.id,
     )
     agent = AgentModel(
-        id="agent-2",
+        id="agent-rt-2",
         title="Agent Two",
         description="Agent Two desc",
         system_prompt="Prompt two",

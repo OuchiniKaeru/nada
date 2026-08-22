@@ -43,22 +43,37 @@ _agno_db = None
 
 
 def init_agno_db():
-    get_agno_postgres_db()
+    get_agno_db()
 
 
-def get_agno_postgres_db():
+def _is_sqlite_url(db_url: str) -> bool:
+    return (not db_url) or db_url.startswith("sqlite")
+
+
+def get_agno_db():
     import os
-    from agno.db.postgres import AsyncPostgresDb
     global _async_engine, _agno_db
-    if _agno_db is None:
-        db_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://nada:nada@db:5432/nada")
-        _async_engine = _build_async_engine(db_url)
-        _agno_db = AsyncPostgresDb(
-            db_url=db_url,
-            db_engine=_async_engine,
-            session_table="sessions",
-            create_schema=True,
+    if _agno_db is not None:
+        return _agno_db
+    db_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./nada.db")
+    if _is_sqlite_url(db_url):
+        # Dockerなしのローカル実行用。Agno 側も SQLite に切り替える。
+        # 注意: アプリ本体の sessions テーブル(id主キー)と Agno のスキーマが
+        # 違うため、Agno 用には専用ファイル + 専用テーブル名を使う。
+        from agno.db.sqlite import AsyncSqliteDb
+        _agno_db = AsyncSqliteDb(
+            db_file="./nada_agno.db",
+            session_table="agno_sessions",
         )
+        return _agno_db
+    from agno.db.postgres import AsyncPostgresDb
+    _async_engine = _build_async_engine(db_url)
+    _agno_db = AsyncPostgresDb(
+        db_url=db_url,
+        db_engine=_async_engine,
+        session_table="sessions",
+        create_schema=True,
+    )
     return _agno_db
 
 
@@ -317,7 +332,7 @@ class AgentFactory:
                         # Do not abort agent creation if MCP connect fails or is cancelled.
                         print(f"[MCP] selected mcp connect aborted: {type(exc).__name__}: {exc}")
 
-        db = get_agno_postgres_db()
+        db = get_agno_db()
 
         kwargs = {
             "db": db,

@@ -18,6 +18,8 @@ from app.models import (
     execution_agent,
     model_registry,
     model_price,
+    resource,
+    workflow,
 )
 
 EXPECTED_TABLES = {
@@ -35,6 +37,11 @@ EXPECTED_TABLES = {
     "execution_agents",
     "model_registry",
     "model_prices",
+    # Phase 2: リソース基盤
+    "resources",
+    "resource_links",
+    # Phase 3: Workflow
+    "workflows",
 }
 
 
